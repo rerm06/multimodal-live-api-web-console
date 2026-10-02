@@ -1,0 +1,11 @@
+# Despliegue de la app de retención ICPR (carpeta icpr-retencion/).
+[build]
+  base = "icpr-retencion"
+  command = "npm ci && npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
