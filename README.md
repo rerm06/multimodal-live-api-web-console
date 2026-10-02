@@ -25,7 +25,7 @@ We have provided several example applications on other branches of this reposito
 Below is an example of an entire application that will use Google Search grounding and then render graphs using [vega-embed](https://github.com/vega/vega-embed):
 
 ```typescript
-import { type FunctionDeclaration, SchemaType } from "@google/generative-ai";
+import { type FunctionDeclaration, Modality, Type } from "@google/genai";
 import { useEffect, useRef, useState, memo } from "react";
 import vegaEmbed from "vega-embed";
 import { useLiveAPIContext } from "../../contexts/LiveAPIContext";
@@ -34,10 +34,10 @@ export const declaration: FunctionDeclaration = {
   name: "render_altair",
   description: "Displays an altair graph in json format.",
   parameters: {
-    type: SchemaType.OBJECT,
+    type: Type.OBJECT,
     properties: {
       json_graph: {
-        type: SchemaType.STRING,
+        type: Type.STRING,
         description:
           "JSON STRING representation of the graph to render. Must be a string, not a json object",
       },
@@ -52,22 +52,25 @@ export function Altair() {
 
   useEffect(() => {
     setConfig({
-      model: "models/gemini-2.0-flash-exp",
-      systemInstruction: {
-        parts: [
-          {
-            text: 'You are my helpful assistant. Any time I ask you for a graph call the "render_altair" function I have provided you. Dont ask for additional information just make your best judgement.',
-          },
-        ],
+      model: "models/gemini-3.1-flash-live-preview",
+      config: {
+        responseModalities: [Modality.AUDIO],
+        systemInstruction: {
+          parts: [
+            {
+              text: 'You are my helpful assistant. Any time I ask you for a graph call the "render_altair" function I have provided you. Dont ask for additional information just make your best judgement.',
+            },
+          ],
+        },
+        tools: [{ googleSearch: {} }, { functionDeclarations: [declaration] }],
       },
-      tools: [{ googleSearch: {} }, { functionDeclarations: [declaration] }],
     });
   }, [setConfig]);
 
   useEffect(() => {
     const onToolCall = (toolCall: ToolCall) => {
       console.log(`got toolcall`, toolCall);
-      const fc = toolCall.functionCalls.find(
+      const fc = toolCall.functionCalls?.find(
         (fc) => fc.name === declaration.name
       );
       if (fc) {

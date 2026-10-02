@@ -35,18 +35,18 @@ export type UseLiveAPIResults = {
 };
 
 export function useLiveAPI({
-  url,
   apiKey,
+  apiVersion,
 }: MultimodalLiveAPIClientConnection): UseLiveAPIResults {
   const client = useMemo(
-    () => new MultimodalLiveClient({ url, apiKey }),
-    [url, apiKey],
+    () => new MultimodalLiveClient({ apiKey, apiVersion }),
+    [apiKey, apiVersion],
   );
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
 
   const [connected, setConnected] = useState(false);
   const [config, setConfig] = useState<LiveConfig>({
-    model: "models/gemini-2.0-flash-exp",
+    model: "models/gemini-3.1-flash-live-preview",
   });
   const [volume, setVolume] = useState(0);
 
@@ -90,7 +90,6 @@ export function useLiveAPI({
   }, [client]);
 
   const connect = useCallback(async () => {
-    console.log(config);
     if (!config) {
       throw new Error("config has not been set");
     }

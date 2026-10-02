@@ -16,51 +16,34 @@
 
 import type {
   Content,
-  FunctionCall,
-  GenerationConfig,
-  GenerativeContentBlob,
-  Part,
-  Tool,
-} from "@google/generative-ai";
+  FunctionResponse,
+  LiveConnectConfig,
+  LiveServerContent,
+  LiveServerToolCall,
+  LiveServerToolCallCancellation,
+} from "@google/genai";
 
 /**
  * this module contains type-definitions and Type-Guards
+ * the wire types themselves come from the `@google/genai` SDK
  */
 
 // Type-definitions
 
-/* outgoing types */
-
 /**
- * the config to initiate the session
+ * the model to use and the config to initiate the session with
  */
 export type LiveConfig = {
   model: string;
-  systemInstruction?: { parts: Part[] };
-  generationConfig?: Partial<LiveGenerationConfig>;
-  tools?: Array<Tool | { googleSearch: {} } | { codeExecution: {} }>;
+  config?: LiveConnectConfig;
 };
 
-export type LiveGenerationConfig = GenerationConfig & {
-  responseModalities: "text" | "audio" | "image";
-  speechConfig?: {
-    voiceConfig?: {
-      prebuiltVoiceConfig?: {
-        voiceName: "Puck" | "Charon" | "Kore" | "Fenrir" | "Aoede" | string;
-      };
-    };
-  };
-};
+/* outgoing types (used for logging) */
 
 export type LiveOutgoingMessage =
-  | SetupMessage
   | ClientContentMessage
   | RealtimeInputMessage
   | ToolResponseMessage;
-
-export type SetupMessage = {
-  setup: LiveConfig;
-};
 
 export type ClientContentMessage = {
   clientContent: {
@@ -71,21 +54,16 @@ export type ClientContentMessage = {
 
 export type RealtimeInputMessage = {
   realtimeInput: {
-    mediaChunks: GenerativeContentBlob[];
+    mediaChunks: { mimeType: string; data: string }[];
   };
 };
 
 export type ToolResponseMessage = {
-  toolResponse: {
-    functionResponses: LiveFunctionResponse[];
-  };
+  toolResponse: ToolResponse;
 };
 
-export type ToolResponse = ToolResponseMessage["toolResponse"];
-
-export type LiveFunctionResponse = {
-  response: object;
-  id: string;
+export type ToolResponse = {
+  functionResponses: FunctionResponse[];
 };
 
 /** Incoming types */
@@ -102,41 +80,23 @@ export type ServerContentMessage = {
   serverContent: ServerContent;
 };
 
-export type ServerContent = ModelTurn | TurnComplete | Interrupted;
+export type ServerContent = LiveServerContent;
 
 export type ModelTurn = {
-  modelTurn: {
-    parts: Part[];
-  };
+  modelTurn: Content;
 };
-
-export type TurnComplete = { turnComplete: boolean };
-
-export type Interrupted = { interrupted: true };
 
 export type ToolCallCancellationMessage = {
-  toolCallCancellation: {
-    ids: string[];
-  };
+  toolCallCancellation: ToolCallCancellation;
 };
 
-export type ToolCallCancellation =
-  ToolCallCancellationMessage["toolCallCancellation"];
+export type ToolCallCancellation = LiveServerToolCallCancellation;
 
 export type ToolCallMessage = {
   toolCall: ToolCall;
 };
 
-export type LiveFunctionCall = FunctionCall & {
-  id: string;
-};
-
-/**
- * A `toolCall` message
- */
-export type ToolCall = {
-  functionCalls: LiveFunctionCall[];
-};
+export type ToolCall = LiveServerToolCall;
 
 /** log types */
 export type StreamingLog = {
@@ -148,13 +108,10 @@ export type StreamingLog = {
 
 // Type-Guards
 
-const prop = (a: any, prop: string, kind: string = "object") =>
-  typeof a === "object" && typeof a[prop] === "object";
+const prop = (a: any, prop: string) =>
+  typeof a === "object" && a !== null && typeof a[prop] === "object";
 
 // outgoing messages
-export const isSetupMessage = (a: unknown): a is SetupMessage =>
-  prop(a, "setup");
-
 export const isClientContentMessage = (a: unknown): a is ClientContentMessage =>
   prop(a, "clientContent");
 
@@ -183,60 +140,11 @@ export const isToolCallCancellationMessage = (
 export const isModelTurn = (a: any): a is ModelTurn =>
   typeof (a as ModelTurn).modelTurn === "object";
 
-export const isTurnComplete = (a: any): a is TurnComplete =>
-  typeof (a as TurnComplete).turnComplete === "boolean";
+export const isTurnComplete = (a: ServerContent) => !!a.turnComplete;
 
-export const isInterrupted = (a: any): a is Interrupted =>
-  (a as Interrupted).interrupted;
-
-export function isToolCall(value: unknown): value is ToolCall {
-  if (!value || typeof value !== "object") return false;
-
-  const candidate = value as Record<string, unknown>;
-
-  return (
-    Array.isArray(candidate.functionCalls) &&
-    candidate.functionCalls.every((call) => isLiveFunctionCall(call))
-  );
-}
-
-export function isToolResponse(value: unknown): value is ToolResponse {
-  if (!value || typeof value !== "object") return false;
-
-  const candidate = value as Record<string, unknown>;
-
-  return (
-    Array.isArray(candidate.functionResponses) &&
-    candidate.functionResponses.every((resp) => isLiveFunctionResponse(resp))
-  );
-}
-
-export function isLiveFunctionCall(value: unknown): value is LiveFunctionCall {
-  if (!value || typeof value !== "object") return false;
-
-  const candidate = value as Record<string, unknown>;
-
-  return (
-    typeof candidate.name === "string" &&
-    typeof candidate.id === "string" &&
-    typeof candidate.args === "object" &&
-    candidate.args !== null
-  );
-}
-
-export function isLiveFunctionResponse(
-  value: unknown,
-): value is LiveFunctionResponse {
-  if (!value || typeof value !== "object") return false;
-
-  const candidate = value as Record<string, unknown>;
-
-  return (
-    typeof candidate.response === "object" && typeof candidate.id === "string"
-  );
-}
+export const isInterrupted = (a: ServerContent) => !!a.interrupted;
 
 export const isToolCallCancellation = (
   a: unknown,
-): a is ToolCallCancellationMessage["toolCallCancellation"] =>
+): a is ToolCallCancellation =>
   typeof a === "object" && Array.isArray((a as any).ids);
