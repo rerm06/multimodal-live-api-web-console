@@ -42,7 +42,7 @@ const student = (over: Partial<Student> = {}, sig: Partial<Signals> = {}): Stude
 });
 
 describe("computeRhi", () => {
-  it("scores a healthy student green with no factors", () => {
+  it("da verde y sin factores a un estudiante sano", () => {
     const r = computeRhi(healthy);
     expect(r.score).toBe(100);
     expect(r.level).toBe("verde");
@@ -50,7 +50,7 @@ describe("computeRhi", () => {
     expect(r.requiresHuman).toBe(false);
   });
 
-  it("explains every point it subtracts", () => {
+  it("explica cada punto que resta", () => {
     const r = computeRhi({ ...healthy, daysSinceLogin: 8, financialHold: true });
     expect(r.score).toBe(100 - 14 - 15);
     expect(r.factors.map((f) => f.reason)).toEqual([
@@ -61,13 +61,13 @@ describe("computeRhi", () => {
     expect(r.suggestedAgent).toBe("enlace");
   });
 
-  it("caps each area so one area cannot sink the index alone", () => {
+  it("limita cada área para que una sola no hunda el índice", () => {
     const r = computeRhi({ ...healthy, lateSubmissions: 6, gpa: 1.2, attendancePct: 40 });
-    // 16 + 14 + 12 = 42, capped at 30.
+    // 16 + 14 + 12 = 42, con tope de 30.
     expect(r.score).toBe(70);
   });
 
-  it("routes red students to Seguimiento and requires a human", () => {
+  it("envía a los rojos a Seguimiento y exige una persona", () => {
     const r = computeRhi({
       ...healthy,
       daysSinceLogin: 15,
@@ -81,7 +81,7 @@ describe("computeRhi", () => {
     expect(r.suggestedAgent).toBe("seguimiento");
   });
 
-  it("always routes wellbeing concerns to Acompaña with a human", () => {
+  it("envía siempre el bienestar a Acompaña con una persona", () => {
     const r = computeRhi({ ...healthy, wellbeingConcern: true, financialHold: true, aidRefilingPending: true });
     expect(r.primaryArea).toBe("bienestar");
     expect(r.suggestedAgent).toBe("acompana");
@@ -100,23 +100,23 @@ describe("canSendNudge", () => {
     text: "x",
   });
 
-  it("allows a first message in daytime", () => {
+  it("permite un primer mensaje de día", () => {
     expect(canSendNudge(student(), [], noon)).toEqual({ ok: true });
   });
 
-  it("blocks without consent, when paused, and for wellbeing cases", () => {
+  it("bloquea sin consentimiento, con pausa y en casos de bienestar", () => {
     expect(canSendNudge(student({ consent: false }), [], noon).ok).toBe(false);
     expect(canSendNudge(student({ contactPaused: true }), [], noon).ok).toBe(false);
     expect(canSendNudge(student({}, { wellbeingConcern: true }), [], noon).ok).toBe(false);
   });
 
-  it("respects quiet hours", () => {
+  it("respeta el horario de silencio", () => {
     expect(canSendNudge(student(), [], new Date(2026, 9, 6, 22, 0)).ok).toBe(false);
     expect(canSendNudge(student(), [], new Date(2026, 9, 6, 7, 59)).ok).toBe(false);
     expect(canSendNudge(student(), [], new Date(2026, 9, 6, 8, 0)).ok).toBe(true);
   });
 
-  it("enforces the minimum gap and the weekly cap", () => {
+  it("aplica la separación mínima y el tope semanal", () => {
     expect(canSendNudge(student(), [nudge(5)], noon).ok).toBe(false);
     expect(canSendNudge(student(), [nudge(30)], noon).ok).toBe(true);
     const r = canSendNudge(student(), [nudge(30), nudge(100)], noon, DEFAULT_POLICY);
@@ -124,27 +124,27 @@ describe("canSendNudge", () => {
     expect(canSendNudge(student(), [nudge(30), nudge(200)], noon).ok).toBe(true);
   });
 
-  it("ignores other students' messages", () => {
+  it("ignora los mensajes de otros estudiantes", () => {
     expect(canSendNudge(student(), [{ ...nudge(1), studentId: "E2" }], noon).ok).toBe(true);
   });
 });
 
 describe("detectSafety", () => {
-  it("flags crisis language before anything else", () => {
+  it("detecta lenguaje de crisis antes que nada", () => {
     expect(detectSafety("a veces pienso en quitarme la vida").level).toBe("crisis");
     expect(detectSafety("tengo ansiedad y me quiero morir").level).toBe("crisis");
   });
-  it("flags wellbeing language", () => {
+  it("detecta lenguaje de malestar", () => {
     expect(detectSafety("estoy muy abrumada con todo").level).toBe("bienestar");
     expect(detectSafety("tengo mucha ansiedad").level).toBe("bienestar");
   });
-  it("passes ordinary questions", () => {
+  it("deja pasar preguntas comunes", () => {
     expect(detectSafety("¿cuándo vence la FAFSA?").level).toBe("ninguno");
   });
 });
 
 describe("auditAttribute", () => {
-  it("flags a disparity under the four-fifths rule", () => {
+  it("marca una disparidad bajo la regla de cuatro quintos", () => {
     const students = Array.from({ length: 20 }, (_, i) => student({ id: `S${i}`, firstGen: i < 10 }));
     const levels = new Map<string, Level>(
       students.map((s, i) => [s.id, (i < 10 ? i < 6 : i < 12) ? "rojo" : "verde"]),
@@ -155,7 +155,7 @@ describe("auditAttribute", () => {
     expect(r.needsReview).toBe(true);
   });
 
-  it("does not compare groups smaller than the minimum", () => {
+  it("no compara grupos menores que el mínimo", () => {
     const students = [
       ...Array.from({ length: 12 }, (_, i) => student({ id: `A${i}`, ageBand: "18-24" })),
       student({ id: "B0", ageBand: "35+" }),
@@ -166,21 +166,21 @@ describe("auditAttribute", () => {
 });
 
 describe("computeRoi", () => {
-  it("reproduces the plan's illustrative figures", () => {
+  it("reproduce las cifras ilustrativas del plan", () => {
     const r = computeRoi(DEFAULT_ROI);
     expect(r.revenuePerCohort).toBeCloseTo(15_610, 0);
     expect(r.revenuePerYear).toBeCloseTo(62_440, 0);
   });
 });
 
-describe("helpers", () => {
-  it("fills templates with the first name", () => {
+describe("utilidades", () => {
+  it("rellena las plantillas con el primer nombre", () => {
     expect(fillTemplate("Hola {nombre} de {recinto}", student())).toBe("Hola Coral de Bayamón");
   });
-  it("answers offline by intent", () => {
+  it("responde sin conexión según la intención", () => {
     expect(offlineReply("enlace", "no sé cómo renovar la FAFSA")).toMatch(/studentaid\.gov/);
   });
-  it("seeds a deterministic cohort with every level represented", () => {
+  it("genera una cohorte reproducible con los tres niveles", () => {
     const a = seedStudents();
     expect(seedStudents()).toEqual(a);
     const levels = new Set(a.map((s) => computeRhi(s.signals).level));
